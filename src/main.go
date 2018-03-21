@@ -2,13 +2,44 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+	"fmt"
+	"io/ioutil"
+	"net/http"
 )
 
-var DB = make(map[string]string)
+// Data
+var Routes = map[string]string{
+	"a": "ra",
+	"b": "rb",
+}
 
+// Helpers
+func request(url string) string {
+
+	response, err := http.Get(url)
+
+	if err != nil {
+
+		fmt.Printf("%s", err)
+
+	} else {
+
+		defer response.Body.Close()
+		contents, err := ioutil.ReadAll(response.Body)
+
+		if err != nil {
+			fmt.Printf("%s", err)
+		}
+
+		return string(contents)
+	}
+
+	return ""
+}
+
+// Routes
 func setupRouter() *gin.Engine {
-	// Disable Console Color
-	// gin.DisableConsoleColor()
+
 	r := gin.Default()
 
 	// Ping test
@@ -16,41 +47,38 @@ func setupRouter() *gin.Engine {
 		c.String(200, "pong")
 	})
 
-	// Get user value
-	r.GET("/user/:name", func(c *gin.Context) {
-		user := c.Params.ByName("name")
-		value, ok := DB[user]
+	// Dynamic routing.
+	r.GET("/dynamic/:route", func(c *gin.Context) {
+		route := c.Params.ByName("route")
+		value, ok := Routes[route]
+
 		if ok {
-			c.JSON(200, gin.H{"user": user, "value": value})
+
+			c.JSON(200, gin.H{"route": route, "value": value})
+
 		} else {
-			c.JSON(200, gin.H{"user": user, "status": "no value"})
+
+			c.JSON(200, gin.H{"route": route, "status": "no value"})
 		}
 	})
 
-	// Authorized group (uses gin.BasicAuth() middleware)
-	// Same than:
-	// authorized := r.Group("/")
-	// authorized.Use(gin.BasicAuth(gin.Credentials{
-	//	  "foo":  "bar",
-	//	  "manu": "123",
-	//}))
-	authorized := r.Group("/", gin.BasicAuth(gin.Accounts{
-		"foo":  "bar", // user:foo password:bar
-		"manu": "123", // user:manu password:123
-	}))
+	r.GET("/recurse/:route", func(c *gin.Context) {
+		route := c.Params.ByName("route")
 
-	authorized.POST("admin", func(c *gin.Context) {
-		user := c.MustGet(gin.AuthUserKey).(string)
+		i := len(route)
+		prefix := route[0:1]
+		var res string
 
-		// Parse JSON
-		var json struct {
-			Value string `json:"value" binding:"required"`
+		if i > 1 {
+
+			res = request("http://localhost:8080/recurse/" + route[1:])
+
+		} else {
+
+			res = "|"
 		}
 
-		if c.Bind(&json) == nil {
-			DB[user] = json.Value
-			c.JSON(200, gin.H{"status": "ok"})
-		}
+		c.String(200, prefix + "-" + res)
 	})
 
 	return r
@@ -58,6 +86,5 @@ func setupRouter() *gin.Engine {
 
 func main() {
 	r := setupRouter()
-	// Listen and Server in 0.0.0.0:8080
-	r.Run(":8080")
+	r.Run(":8080") // Listen and Server in 0.0.0.0:8080
 }
