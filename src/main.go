@@ -5,6 +5,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"log"
+	"os"
+	"time"
+
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	pb "google.golang.org/grpc/examples/helloworld/helloworld"
 )
 
 // Data
@@ -71,7 +78,7 @@ func setupRouter() *gin.Engine {
 
 		if i > 1 {
 
-			res = request("http://localhost:8080/recurse/" + route[1:])
+			res = request("http://simple-go:8080/recurse/" + route[1:])
 
 		} else {
 
@@ -81,10 +88,37 @@ func setupRouter() *gin.Engine {
 		c.String(200, prefix + "-" + res)
 	})
 
+	r.GET("/grpc/greet", func(c *gin.Context) {
+
+		address := "localhost:9000"
+		conn, err := grpc.Dial(address, grpc.WithInsecure())
+		if err != nil {
+		log.Fatalf("did not connect: %v", err)
+		}
+		defer conn.Close()
+		c1 := pb.NewGreeterClient(conn)
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		log.Printf("Calling: %s", address)
+		r, err := c1.SayHello(ctx, &pb.HelloRequest{Name: "World"})
+		if err != nil {
+			log.Fatalf("could not greet: %v", err)
+		}
+		log.Printf("Greeting: %s", r.Message)
+
+		c.String(200, r.Message)
+	})
+
 	return r
 }
 
 func main() {
 	r := setupRouter()
-	r.Run(":8080") // Listen and Server in 0.0.0.0:8080
+	port := "8080"
+	if len(os.Args) > 1 {
+		port = os.Args[1]
+	}
+	r.Run(":" + port) // Listen and Server in 0.0.0.0:port
 }
