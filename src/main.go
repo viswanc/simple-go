@@ -120,5 +120,5 @@ func main() {
 	if len(os.Args) > 1 {
 		port = os.Args[1]
 	}
-	r.Run(":" + port) // Listen and Server in 0.0.0.0:port
+	r.Run("0.0.0.0:" + port) // Listen and Serve on 0.0.0.0:port
 }

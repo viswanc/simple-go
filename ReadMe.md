@@ -22,3 +22,4 @@
 
   * 0000  The server now takes an optional command line argument, the port to listen.
   * 0101  Added the route grpc/greet to call a internal gRPC service (implemented elsewhere).
+  * 1346  Bug Fixed: The service wasn't exposed (@ 0.0.0.0).
